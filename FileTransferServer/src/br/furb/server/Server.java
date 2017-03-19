@@ -6,6 +6,7 @@
 package br.furb.server;
 
 import java.io.BufferedInputStream;
+import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -32,6 +33,8 @@ public class Server {
      */
     
     private static String clientIP = "";
+    private static String fileName = "";
+    private static String dirBackup = "";
     private static int serverPortNumber = 0;
     
     public static void main(String[] args) throws IOException {
@@ -39,8 +42,12 @@ public class Server {
         serverPortNumber = Integer.parseInt(prop.getProperty("socketPort"));
         ServerSocket serverSocket = new ServerSocket(serverPortNumber);
         String serverType = prop.getProperty("serverType");
-        System.out.println("serverType="+serverType);
-        System.out.println("socketPortNumber="+serverPortNumber);
+        dirBackup = prop.getProperty("dirBackup");
+        System.out.println("\\------- Configurações do servidor -------/");
+        System.out.println("Tipo de servidor: " + serverType);
+        System.out.println("Porta TCP.......: " + serverPortNumber);
+        System.out.println("Diretório Backup: " + dirBackup);
+        System.out.println("/------- Configurações do servidor -------\\");
         int porta = 5000;
         String ip = "227.55.77.99";
         MulticastSocket socket = new MulticastSocket(porta);
@@ -54,9 +61,10 @@ public class Server {
 			      recvData.length);
               socket.receive (recvPacket);
 	      
-              String sentence = new String(recvPacket.getData());
-              if (sentence.trim().startsWith(serverType)) {        
-                clientIP = recvPacket.getAddress().toString().substring(1);  
+              String sentence = new String(recvPacket.getData()).trim();
+              if (sentence.startsWith(serverType)) {        
+                clientIP = recvPacket.getAddress().toString().substring(1);
+                fileName = sentence.split("]")[1];
                 new Thread() {
                     @Override
                     public void run() {
@@ -66,6 +74,7 @@ public class Server {
                 }.start();
               } else {
                   clientIP = "";
+                  fileName = "";
               }
 	      sentence= null;
 	      recvPacket = null;
@@ -105,19 +114,23 @@ public class Server {
 
         try {
             Socket clientSocket = serverSocket.accept();
-            /* Preparacao dos fluxos de entrada e saida */
-            BufferedInputStream bf = new BufferedInputStream(clientSocket.getInputStream());
-            bf.read(stream);
+            /* Preparacao dos fluxos de entrada e saida */                        
             
-            Path file = Paths.get("C:\\Temp\\arquivo.txt");
-            
-            FileOutputStream fos = new FileOutputStream(file.toFile());
-            
-            fos.write(stream);
-            /* Finaliza tudo */
-            bf.close();
-            fos.flush();
-            fos.close();
+            InputStream in = clientSocket.getInputStream();
+            InputStreamReader isr = new InputStreamReader(in);
+            BufferedReader reader = new BufferedReader(isr);
+            String fName = reader.readLine();
+            Path file = Paths.get(dirBackup + fName);
+            System.out.println("Arquivo recebido: " + fName);
+            FileOutputStream out = new FileOutputStream(file.toFile());
+            int tamanho = 4096; // buffer de 4KB  
+            byte[] buffer = new byte[tamanho];  
+            int lidos = -1;  
+            while ((lidos = in.read(buffer, 0, tamanho)) != -1) {  
+                out.write(buffer, 0, lidos);  
+            }  
+            out.flush();  
+            out.close();
             clientSocket.close();
         } catch (IOException ex) {
             System.err.println(ex.getMessage());
