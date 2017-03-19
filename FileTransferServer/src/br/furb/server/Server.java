@@ -6,6 +6,7 @@
 package br.furb.server;
 
 import java.io.BufferedInputStream;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -18,6 +19,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Properties;
 
 /**
  *
@@ -29,11 +31,16 @@ public class Server {
      * @param args the command line arguments
      */
     
-    private static String ipCliente = "";
+    private static String clientIP = "";
+    private static int serverPortNumber = 0;
     
     public static void main(String[] args) throws IOException {
-        ServerSocket serverSocket = new ServerSocket(2500);
-        String serverType = "[TEXT]";//args[0];
+        Properties prop = getProp();
+        serverPortNumber = Integer.parseInt(prop.getProperty("socketPort"));
+        ServerSocket serverSocket = new ServerSocket(serverPortNumber);
+        String serverType = prop.getProperty("serverType");
+        System.out.println("serverType="+serverType);
+        System.out.println("socketPortNumber="+serverPortNumber);
         int porta = 5000;
         String ip = "227.55.77.99";
         MulticastSocket socket = new MulticastSocket(porta);
@@ -48,17 +55,17 @@ public class Server {
               socket.receive (recvPacket);
 	      
               String sentence = new String(recvPacket.getData());
-              if (serverType.equals(sentence.trim())) {        
-                ipCliente = recvPacket.getAddress().toString().substring(1);  
+              if (sentence.trim().startsWith(serverType)) {        
+                clientIP = recvPacket.getAddress().toString().substring(1);  
                 new Thread() {
                     @Override
                     public void run() {
-                        sendMyName(ipCliente); 
+                        sendMyName(clientIP); 
                         receiveFile(serverSocket);
                     }                    
                 }.start();
               } else {
-                  ipCliente = "";
+                  clientIP = "";
               }
 	      sentence= null;
 	      recvPacket = null;
@@ -75,7 +82,7 @@ public class Server {
         
         try {
             /* Pegar parametros */
-            String mensagemEnviar = "IP: " + InetAddress.getLocalHost().getHostAddress();
+            String mensagemEnviar = "IP: " + InetAddress.getLocalHost().getHostAddress() + ":" + serverPortNumber;
             /* Inicializacao de sockets UDP com Datagrama */
             socket = new DatagramSocket();
             /* Configuracao a partir dos parametros */
@@ -115,6 +122,14 @@ public class Server {
         } catch (IOException ex) {
             System.err.println(ex.getMessage());
         }
+    }
+    
+    public static Properties getProp() throws IOException {
+        Properties props = new Properties();
+        FileInputStream file = new FileInputStream("./config.properties");
+        props.load(file);
+        return props;
+
     }
     
 }
