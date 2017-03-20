@@ -32,7 +32,6 @@ public class Server {
      */
     
     private static String clientIP = "";
-    private static String fileName = "";
     private static String dirBackup = "";
     private static int serverPortNumber = 0;
     
@@ -61,9 +60,8 @@ public class Server {
               socket.receive (recvPacket);
 	      
               String sentence = new String(recvPacket.getData()).trim();
-              if (sentence.startsWith(serverType)) {        
+              if (sentence.equals(serverType)) {        
                 clientIP = recvPacket.getAddress().toString().substring(1);
-                fileName = sentence.split("]")[1];
                 new Thread() {
                     @Override
                     public void run() {
@@ -73,7 +71,6 @@ public class Server {
                 }.start();
               } else {
                   clientIP = "";
-                  fileName = "";
               }
 	      sentence= null;
 	      recvPacket = null;
@@ -90,12 +87,12 @@ public class Server {
         
         try {
             /* Pegar parametros */
-            String mensagemEnviar = "IP: " + InetAddress.getLocalHost().getHostAddress() + ":" + serverPortNumber;
+            String message = "IP: " + InetAddress.getLocalHost().getHostAddress() + ":" + serverPortNumber;
             /* Inicializacao de sockets UDP com Datagrama */
             socket = new DatagramSocket();
             /* Configuracao a partir dos parametros */
             InetAddress host = InetAddress.getByName(ip);
-            byte[] m = mensagemEnviar.getBytes();
+            byte[] m = message.getBytes();
             /* Criacao do Pacote Datagrama para Envio */
             request = new DatagramPacket(m, m.length, host, serverPort);
             /* Envio propriamente dito */
